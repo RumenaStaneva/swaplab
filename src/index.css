@@ -1,0 +1,21 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Tailwind v4: define theme tokens here */
+@theme {
+    --color-gray-100: #f3f4f6;
+    --color-gray-400: #9ca3af;
+    --color-gray-800: #1f2937;
+    --color-gray-950: #030712;
+}
+
+@layer base {
+    * {
+        @apply border-gray-800;
+    }
+
+    body {
+        @apply bg-gray-950 text-gray-100;
+    }
+}
