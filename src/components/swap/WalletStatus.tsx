@@ -2,12 +2,14 @@ import { X, Wallet } from 'lucide-react'
 import Button from '../ui/Button'
 import Badge from '../ui/Badge'
 import LoadingSpinner from '../ui/LoadingSpinner'
+import { useWallet } from './WalletContext'
 
 interface WalletStatusProps {
     isConnected: boolean
     isLoading?: boolean
     address?: string
     chainId?: number
+    metamaskChainId: number | null
     onConnect: () => void
     onDisconnect: () => void
 }
@@ -18,9 +20,11 @@ export default function WalletStatus({
     isLoading,
     address,
     chainId,
+    metamaskChainId,
     onConnect,
     onDisconnect,
 }: WalletStatusProps) {
+    const { isConnecting, switchWrongChain } = useWallet();
     const formatAddress = (addr: string) => {
         return `${addr.slice(0, 6)}...${addr.slice(-4)}`
     }
@@ -38,13 +42,22 @@ export default function WalletStatus({
         )
     }
 
-    const isCorrectNetwork = chainId === 11155111 // Sepolia
+
+    const isWrongNetwork = isConnected && metamaskChainId !== chainId;
 
     return (
         <div className="flex items-center gap-3">
-            {!isCorrectNetwork && (
-                <Badge variant="danger">Wrong Network</Badge>
+            {isWrongNetwork && <Badge variant="danger">Wrong Network</Badge>}
+            {isWrongNetwork && (
+                <button
+                    disabled={isConnecting}
+                    onClick={() => switchWrongChain(chainId || 11155111)}
+                    className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg border border-blue-700 transition-colors disabled:opacity-50"
+                >
+                    Switch to Sepolia
+                </button>
             )}
+
 
             {/* Address Display */}
             <div className="flex items-center gap-2 px-4 py-2 bg-gray-800 rounded-lg border border-gray-700">

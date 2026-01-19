@@ -15,7 +15,6 @@ import { RUMBA, PYUSD, mockActivities } from '../mocks/mockActivity'
 import { useWallet } from '../components/swap/WalletContext'
 
 export default function SwapPage() {
-
     const {
         isConnected,
         isConnecting,
@@ -23,8 +22,9 @@ export default function SwapPage() {
         chainId,
         connectWallet,
         disconnectWallet,
+        switchWrongChain,
+        metamaskChainId
     } = useWallet();
-
 
     const [swapState, setSwapState] = useState<SwapState>(SwapState.DISCONNECTED)
     const [swapMode, setSwapMode] = useState<SwapMode>(SwapMode.EXACT_IN)
@@ -47,16 +47,13 @@ export default function SwapPage() {
         if (!isConnected) {
             setSwapState(SwapState.DISCONNECTED);
         }
-        else if (chainId !== 11155111) {
+        else if (metamaskChainId !== 11155111 || metamaskChainId == null) {
             setSwapState(SwapState.WRONG_NETWORK);
         }
         else {
             setSwapState(SwapState.NEEDS_APPROVAL);
         }
-    }, [isConnected, chainId]);
-
-
-
+    }, [isConnected, chainId, metamaskChainId]);
 
     // Wallet connection
     const handleConnect = async () => {
@@ -82,20 +79,18 @@ export default function SwapPage() {
                 handleConnect()
                 break
             case SwapState.WRONG_NETWORK:
-                // TODO: Implement wagmi useSwitchChain
-                setSwapState(SwapState.NEEDS_APPROVAL)
+                switchWrongChain(11155111);
                 break
             case SwapState.NEEDS_APPROVAL:
                 // TODO: Implement token approval with wagmi
-                setTimeout(() => setSwapState(SwapState.READY_TO_SWAP), 1000)
+                // setTimeout(() => setSwapState(SwapState.READY_TO_SWAP), 1000)
                 break
             case SwapState.READY_TO_SWAP:
-                setSwapState(SwapState.TX_PENDING)
                 // TODO: Implement actual swap with wagmi
-                setTimeout(() => {
-                    setSwapState(Math.random() > 0.2 ? SwapState.TX_SUCCESS : SwapState.TX_ERROR)
-                    setTxStatusOpen(true)
-                }, 2000)
+                // setTimeout(() => {
+                //     setSwapState(Math.random() > 0.2 ? SwapState.TX_SUCCESS : SwapState.TX_ERROR)
+                //     setTxStatusOpen(true)
+                // }, 2000)
                 break
         }
     }
@@ -104,8 +99,8 @@ export default function SwapPage() {
         setAmountIn(value)
         if (swapMode === SwapMode.EXACT_IN && value) {
             // TODO: Fetch real quote
-            const mockQuote = (parseFloat(value) * 0.98).toFixed(2)
-            setAmountOut(mockQuote)
+            const quote = '1';
+            setAmountOut(quote)
         }
     }
 
@@ -140,8 +135,10 @@ export default function SwapPage() {
                                 isLoading={isConnecting}
                                 address={address}
                                 chainId={chainId}
+                                metamaskChainId={metamaskChainId}
                                 onConnect={handleConnect}
                                 onDisconnect={handleDisconnect}
+
                             />
                         </div>
                     </div>
