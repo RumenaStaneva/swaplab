@@ -12,10 +12,13 @@ import TxStatusModal from '../components/swap/TxStatusModal'
 import RecentActivity from '../components/swap/RecentActivity'
 import { SwapState, SwapMode, Token, SwapSettings } from '../types/swap'
 import { RUMBA, PYUSD, mockActivities } from '../mocks/mockActivity'
+import { injected } from '@wagmi/connectors'
+import { useConnect } from 'wagmi'
 
 export default function SwapPage() {
     // TODO: Replace with real wagmi hooks
     const [isConnected, setIsConnected] = useState(false)
+    const [isLoading, setIsLoading] = useState(false)
     const [address, setAddress] = useState<string>()
     const [chainId, setChainId] = useState<number>()
 
@@ -30,19 +33,49 @@ export default function SwapPage() {
     const [selectingToken, setSelectingToken] = useState<'in' | 'out' | null>(null)
     const [txStatusOpen, setTxStatusOpen] = useState(false)
 
+    const connect = useConnect()
+
+
     const [settings, setSettings] = useState<SwapSettings>({
         slippageTolerance: 0.5,
         deadline: 20,
     })
 
-    // Mock wallet connection
-    const handleConnect = () => {
-        // TODO: Implement wagmi useConnect
-        setIsConnected(true)
-        setAddress('0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb')
-        setChainId(11155111) // Sepolia
-        setSwapState(SwapState.NEEDS_APPROVAL)
+    function waitForWindowFocus(): Promise<void> {
+        if (document.hasFocus()) return Promise.resolve();
+
+        return new Promise((resolve) => {
+            const onFocus = () => {
+                window.removeEventListener("focus", onFocus);
+                resolve();
+            };
+            window.addEventListener("focus", onFocus, { once: true });
+        });
     }
+
+    // Wallet connection
+    const handleConnect = async () => {
+        setIsLoading(true);
+        try {
+            const result = await connect.mutateAsync({ connector: injected() });
+
+            // wait until user is back in your tab
+            await waitForWindowFocus();
+
+            setAddress(result.accounts?.[0] ?? null);
+            setChainId(result.chainId);
+            setIsConnected(true);
+            setSwapState(SwapState.NEEDS_APPROVAL);
+        } catch (err) {
+            setIsConnected(false);
+            console.error("connect failed", err);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+
+
 
     const handleDisconnect = () => {
         // TODO: Implement wagmi useDisconnect
@@ -111,8 +144,10 @@ export default function SwapPage() {
                         <h1 className="text-3xl font-bold">Swap Tokens</h1>
                         <div className="flex items-center gap-3">
                             <SettingsDrawer settings={settings} onChange={setSettings} />
+
                             <WalletStatus
                                 isConnected={isConnected}
+                                isLoading={isLoading}
                                 address={address}
                                 chainId={chainId}
                                 onConnect={handleConnect}

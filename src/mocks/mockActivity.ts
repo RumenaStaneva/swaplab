@@ -1,4 +1,3 @@
-// src/mocks/mockActivity.ts
 import { SwapActivity, Token } from '../types/swap'
 
 export const RUMBA: Token = {

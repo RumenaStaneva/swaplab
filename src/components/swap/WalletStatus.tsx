@@ -1,9 +1,11 @@
 import { Wallet } from 'lucide-react'
 import Button from '../ui/Button'
 import Badge from '../ui/Badge'
+import LoadingSpinner from '../ui/LoadingSpinner'
 
 interface WalletStatusProps {
     isConnected: boolean
+    isLoading?: boolean
     address?: string
     chainId?: number
     onConnect: () => void
@@ -12,6 +14,7 @@ interface WalletStatusProps {
 
 export default function WalletStatus({
     isConnected,
+    isLoading,
     address,
     chainId,
     onConnect,
@@ -19,6 +22,10 @@ export default function WalletStatus({
 }: WalletStatusProps) {
     const formatAddress = (addr: string) => {
         return `${addr.slice(0, 6)}...${addr.slice(-4)}`
+    }
+
+    if (isLoading) {
+        return <LoadingSpinner />
     }
 
     if (!isConnected) {

@@ -1,5 +1,4 @@
 import { useState } from 'react'
-// import { ChevronDown } from 'lucide-react'
 import Modal from '../ui/Modal'
 import Input from '../ui/Input'
 import { Token } from '../../types/swap'
