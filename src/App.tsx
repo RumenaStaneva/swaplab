@@ -6,6 +6,7 @@ import HistoryPage from './pages/HistoryPage'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { WagmiProvider } from 'wagmi'
 import { config } from '../config'
+import { WalletProvider } from './components/swap/WalletContext'
 
 const queryClient = new QueryClient()
 
@@ -13,18 +14,20 @@ function App() {
   return (
     <WagmiProvider config={config}>
       <QueryClientProvider client={queryClient}>
-        <Router>
-          <Routes>
-            <Route path="/" element={<AppLayout />}>
-              <Route index element={<HomePage />} />
-              <Route path="swap" element={<SwapPage />} />
-              <Route path="history" element={<HistoryPage />} />
-            </Route>
-          </Routes>
-        </Router>
+        <WalletProvider>
+          <Router>
+            <Routes>
+              <Route path="/" element={<AppLayout />}>
+                <Route index element={<HomePage />} />
+                <Route path="swap" element={<SwapPage />} />
+                <Route path="history" element={<HistoryPage />} />
+              </Route>
+            </Routes>
+          </Router>
+        </WalletProvider>
       </QueryClientProvider>
     </WagmiProvider>
   )
 }
 
-export default App
+export default App;

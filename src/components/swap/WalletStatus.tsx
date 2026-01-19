@@ -1,4 +1,4 @@
-import { Wallet } from 'lucide-react'
+import { X, Wallet } from 'lucide-react'
 import Button from '../ui/Button'
 import Badge from '../ui/Badge'
 import LoadingSpinner from '../ui/LoadingSpinner'
@@ -11,6 +11,7 @@ interface WalletStatusProps {
     onConnect: () => void
     onDisconnect: () => void
 }
+
 
 export default function WalletStatus({
     isConnected,
@@ -44,12 +45,20 @@ export default function WalletStatus({
             {!isCorrectNetwork && (
                 <Badge variant="danger">Wrong Network</Badge>
             )}
-            <button
-                onClick={onDisconnect}
-                className="flex items-center gap-2 px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg border border-gray-700 transition-colors"
-            >
+
+            {/* Address Display */}
+            <div className="flex items-center gap-2 px-4 py-2 bg-gray-800 rounded-lg border border-gray-700">
                 <div className="w-2 h-2 bg-green-500 rounded-full" />
                 <span className="font-mono text-sm">{address && formatAddress(address)}</span>
+            </div>
+
+            {/* Disconnect Button */}
+            <button
+                onClick={onDisconnect}
+                className="p-2 bg-gray-800 hover:bg-gray-700 rounded-lg border border-gray-700 transition-colors text-gray-400 hover:text-red-400"
+                title="Disconnect Wallet"
+            >
+                <X className="w-4 h-4" />
             </button>
         </div>
     )

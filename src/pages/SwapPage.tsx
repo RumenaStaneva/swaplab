@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { ArrowDownUp } from 'lucide-react'
 import Card from '../components/ui/Card'
 import WalletStatus from '../components/swap/WalletStatus'
@@ -12,15 +12,19 @@ import TxStatusModal from '../components/swap/TxStatusModal'
 import RecentActivity from '../components/swap/RecentActivity'
 import { SwapState, SwapMode, Token, SwapSettings } from '../types/swap'
 import { RUMBA, PYUSD, mockActivities } from '../mocks/mockActivity'
-import { injected } from '@wagmi/connectors'
-import { useConnect } from 'wagmi'
+import { useWallet } from '../components/swap/WalletContext'
 
 export default function SwapPage() {
-    // TODO: Replace with real wagmi hooks
-    const [isConnected, setIsConnected] = useState(false)
-    const [isLoading, setIsLoading] = useState(false)
-    const [address, setAddress] = useState<string>()
-    const [chainId, setChainId] = useState<number>()
+
+    const {
+        isConnected,
+        isConnecting,
+        address,
+        chainId,
+        connectWallet,
+        disconnectWallet,
+    } = useWallet();
+
 
     const [swapState, setSwapState] = useState<SwapState>(SwapState.DISCONNECTED)
     const [swapMode, setSwapMode] = useState<SwapMode>(SwapMode.EXACT_IN)
@@ -33,56 +37,43 @@ export default function SwapPage() {
     const [selectingToken, setSelectingToken] = useState<'in' | 'out' | null>(null)
     const [txStatusOpen, setTxStatusOpen] = useState(false)
 
-    const connect = useConnect()
-
 
     const [settings, setSettings] = useState<SwapSettings>({
         slippageTolerance: 0.5,
         deadline: 20,
     })
 
-    function waitForWindowFocus(): Promise<void> {
-        if (document.hasFocus()) return Promise.resolve();
+    useEffect(() => {
+        if (!isConnected) {
+            setSwapState(SwapState.DISCONNECTED);
+        }
+        else if (chainId !== 11155111) {
+            setSwapState(SwapState.WRONG_NETWORK);
+        }
+        else {
+            setSwapState(SwapState.NEEDS_APPROVAL);
+        }
+    }, [isConnected, chainId]);
 
-        return new Promise((resolve) => {
-            const onFocus = () => {
-                window.removeEventListener("focus", onFocus);
-                resolve();
-            };
-            window.addEventListener("focus", onFocus, { once: true });
-        });
-    }
+
+
 
     // Wallet connection
     const handleConnect = async () => {
-        setIsLoading(true);
         try {
-            const result = await connect.mutateAsync({ connector: injected() });
+            await connectWallet();
+            setSwapState(SwapState.NEEDS_APPROVAL)
 
-            // wait until user is back in your tab
-            await waitForWindowFocus();
-
-            setAddress(result.accounts?.[0] ?? null);
-            setChainId(result.chainId);
-            setIsConnected(true);
-            setSwapState(SwapState.NEEDS_APPROVAL);
-        } catch (err) {
-            setIsConnected(false);
-            console.error("connect failed", err);
+        } catch (error) {
+            console.error("Wallet connection failed:", error);
         } finally {
-            setIsLoading(false);
+
         }
     };
 
-
-
-
+    // Wallet disconnection
     const handleDisconnect = () => {
-        // TODO: Implement wagmi useDisconnect
-        setIsConnected(false)
-        setAddress(undefined)
-        setChainId(undefined)
-        setSwapState(SwapState.DISCONNECTED)
+        disconnectWallet();
     }
 
     const handlePrimaryAction = () => {
@@ -92,7 +83,6 @@ export default function SwapPage() {
                 break
             case SwapState.WRONG_NETWORK:
                 // TODO: Implement wagmi useSwitchChain
-                setChainId(11155111)
                 setSwapState(SwapState.NEEDS_APPROVAL)
                 break
             case SwapState.NEEDS_APPROVAL:
@@ -147,7 +137,7 @@ export default function SwapPage() {
 
                             <WalletStatus
                                 isConnected={isConnected}
-                                isLoading={isLoading}
+                                isLoading={isConnecting}
                                 address={address}
                                 chainId={chainId}
                                 onConnect={handleConnect}
