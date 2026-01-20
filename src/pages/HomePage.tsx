@@ -30,13 +30,13 @@ export default function HomePage() {
                         <div className="flex items-center justify-center gap-4">
                             <Link to="/swap">
                                 <Button size="lg" variant="primary">
-                                    Launch App
+                                    Start swapping
                                     <ArrowRight className="w-5 h-5 ml-2" />
                                 </Button>
                             </Link>
-                            <Button size="lg" variant="secondary">
+                            <Button size="lg" variant="secondary" as={Link} to="https://github.com/RumenaStaneva/swaplab" target="_blank" rel="noopener noreferrer">
                                 <Github className="w-5 h-5 mr-2" />
-                                View on GitHub
+                                View on GitHub§
                             </Button>
                         </div>
 

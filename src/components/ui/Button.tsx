@@ -1,21 +1,25 @@
-import { ButtonHTMLAttributes, ReactNode } from 'react'
+import { ButtonHTMLAttributes, JSX, ReactNode, ElementType } from 'react'
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
     variant?: 'primary' | 'secondary' | 'ghost' | 'danger'
     size?: 'sm' | 'md' | 'lg'
+    as?: ElementType
     children: ReactNode
     isLoading?: boolean
+    to?: string
+    target?: string
 }
 
-export default function Button({
+const Button = ({
     variant = 'primary',
     size = 'md',
     children,
     isLoading = false,
     className = '',
+    as: Component = 'button',
     disabled,
     ...props
-}: ButtonProps) {
+}: ButtonProps) => {
     const baseStyles = 'font-medium rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed'
 
     const variants = {
@@ -32,7 +36,7 @@ export default function Button({
     }
 
     return (
-        <button
+        <Component
             className={`${baseStyles} ${variants[variant]} ${sizes[size]} ${className}`}
             disabled={disabled || isLoading}
             {...props}
@@ -46,6 +50,8 @@ export default function Button({
                     Loading...
                 </span>
             ) : children}
-        </button>
+        </Component>
     )
 }
+
+export default Button;
