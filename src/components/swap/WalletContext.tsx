@@ -1,5 +1,5 @@
 import { createContext, useContext, useMemo } from "react";
-import { useConnect, useChainId, useSwitchChain, useConnection, useDisconnect } from "wagmi";
+import { useConnect, useChainId, useSwitchChain, useConnection, useDisconnect, useBalance } from "wagmi";
 import { injected } from "wagmi/connectors";
 
 type WalletContextValue = {
@@ -8,16 +8,18 @@ type WalletContextValue = {
     isConnected: boolean;
     isConnecting: boolean;
     metamaskChainId: number | null;
+    sepoliaBalance?: bigint;
     connectWallet: () => Promise<void>;
     disconnectWallet: () => void;
-    switchWrongChain: (targetChainId: number) => Promise<void>;
+    handleConnect: () => void;
+    switchToSepoliaChain: (targetChainId: number) => Promise<void>;
 };
 
 const WalletContext = createContext<WalletContextValue | null>(null);
 
 export function WalletProvider({ children }: { children: React.ReactNode }) {
     const { address, isConnected, chain: metamaskChain } = useConnection();
-    const { connect, isPending } = useConnect();
+    const { connect, isPending, connectors } = useConnect();
     const { disconnect } = useDisconnect();
     const switchChain = useSwitchChain();
     const chainId = useChainId();
@@ -38,9 +40,9 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
 
     const disconnectWallet = () => disconnect();
 
-    // In a perfect world this would change the wrong chain to the target chain and update the metamaskChain accordingly
+    // In a perfect world this would change the wrong chain to the target chain AND update the Metamask UI accordingly
     // But we don't live in a perfect world
-    const switchWrongChain = async (targetChainId: number) => {
+    const switchToSepoliaChain = async (targetChainId: number) => {
         try {
             await switchChain.mutate({ chainId: targetChainId });
         } catch (error) {
@@ -48,7 +50,18 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
         }
     };
 
+    const handleConnect = async () => {
+        // choose injected connector (MetaMask) if available
+        const injected = connectors.find((c) => c.type === "injected") ?? connectors[0];
+        connect({ connector: injected });
+    };
+
     const metamaskChainId = metamaskChain?.id ?? null;
+    const { data } = useBalance({
+        address,
+        chainId,
+    });
+    const sepoliaBalance = data?.value;
 
     const value = useMemo(
         () => ({
@@ -56,12 +69,14 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
             chainId,
             isConnected,
             isConnecting: isPending,
+            sepoliaBalance,
             connectWallet,
             disconnectWallet,
-            switchWrongChain,
+            switchToSepoliaChain,
+            handleConnect,
             metamaskChainId
         }),
-        [address, chainId, isConnected, isPending, metamaskChain?.id]
+        [address, chainId, isConnected, handleConnect, isPending, sepoliaBalance, metamaskChainId]
     );
 
     return <WalletContext.Provider value={value}>{children}</WalletContext.Provider>;

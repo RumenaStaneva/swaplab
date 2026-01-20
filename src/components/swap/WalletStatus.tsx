@@ -24,7 +24,7 @@ export default function WalletStatus({
     onConnect,
     onDisconnect,
 }: WalletStatusProps) {
-    const { isConnecting, switchWrongChain } = useWallet();
+    const { isConnecting, switchToSepoliaChain } = useWallet();
     const formatAddress = (addr: string) => {
         return `${addr.slice(0, 6)}...${addr.slice(-4)}`
     }
@@ -51,7 +51,7 @@ export default function WalletStatus({
             {isWrongNetwork && (
                 <button
                     disabled={isConnecting}
-                    onClick={() => switchWrongChain(chainId || 11155111)}
+                    onClick={() => switchToSepoliaChain(chainId || 11155111)}
                     className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg border border-blue-700 transition-colors disabled:opacity-50"
                 >
                     Switch to Sepolia

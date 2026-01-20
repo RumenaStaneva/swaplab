@@ -1,77 +1,120 @@
-import { useEffect, useState } from 'react'
-import { ArrowDownUp } from 'lucide-react'
-import Card from '../components/ui/Card'
-import WalletStatus from '../components/swap/WalletStatus'
-import SwapModeToggle from '../components/swap/SwapModeToggle'
-import TokenSelectorModal from '../components/swap/TokenSelectorModal'
-import TokenAmountInput from '../components/swap/TokenAmountInput'
-import SwapDetailsPanel from '../components/swap/SwapDetailsPanel'
-import PrimaryActionButton from '../components/swap/PrimaryActionButton'
-import SettingsDrawer from '../components/swap/SettingsDrawer'
-import TxStatusModal from '../components/swap/TxStatusModal'
-import RecentActivity from '../components/swap/RecentActivity'
-import { SwapState, SwapMode, Token, SwapSettings } from '../types/swap'
-import { RUMBA, PYUSD, mockActivities } from '../mocks/mockActivity'
-import { useWallet } from '../components/swap/WalletContext'
+import { useEffect, useMemo, useState } from "react";
+import { ArrowDownUp } from "lucide-react";
+import { formatUnits, parseUnits } from "viem";
+import {
+    useReadContract,
+    useWriteContract,
+    useWaitForTransactionReceipt,
+} from "wagmi";
+
+import Card from "../components/ui/Card";
+import WalletStatus from "../components/swap/WalletStatus";
+import SwapModeToggle from "../components/swap/SwapModeToggle";
+import TokenSelectorModal from "../components/swap/TokenSelectorModal";
+import TokenAmountInput from "../components/swap/TokenAmountInput";
+import SwapDetailsPanel from "../components/swap/SwapDetailsPanel";
+import PrimaryActionButton from "../components/swap/PrimaryActionButton";
+import SettingsDrawer from "../components/swap/SettingsDrawer";
+import TxStatusModal from "../components/swap/TxStatusModal";
+import RecentActivity from "../components/swap/RecentActivity";
+
+import { SwapState, SwapMode, Token, SwapSettings } from "../types/swap";
+
+import { ADDR, SEPOLIA_CHAIN_ID } from "../config/contracts";
+import { ERC20_ABI, PYUSD, RUMBA } from "../abis/erc20";
+import { UNIV2_ROUTER_ABI } from "../abis/univ2Router";
+import { useWallet } from "../components/swap/WalletContext";
 
 export default function SwapPage() {
-    const {
-        isConnected,
-        isConnecting,
-        address,
-        chainId,
-        connectWallet,
-        disconnectWallet,
-        switchWrongChain,
-        metamaskChainId
-    } = useWallet();
+    // ✅ wagmi wallet state
+    const { address, isConnected, chainId, isConnecting, disconnectWallet, switchToSepoliaChain, handleConnect, } = useWallet();
 
-    const [swapState, setSwapState] = useState<SwapState>(SwapState.DISCONNECTED)
-    const [swapMode, setSwapMode] = useState<SwapMode>(SwapMode.EXACT_IN)
-
-    const [tokenIn, setTokenIn] = useState<Token>(RUMBA)
-    const [tokenOut, setTokenOut] = useState<Token>(PYUSD)
-    const [amountIn, setAmountIn] = useState('')
-    const [amountOut, setAmountOut] = useState('')
-
-    const [selectingToken, setSelectingToken] = useState<'in' | 'out' | null>(null)
-    const [txStatusOpen, setTxStatusOpen] = useState(false)
-
-
+    const [swapState, setSwapState] = useState<SwapState>(SwapState.DISCONNECTED);
+    const [swapMode, setSwapMode] = useState<SwapMode>(SwapMode.EXACT_IN);
+    const [tokenIn, setTokenIn] = useState<Token>(RUMBA);
+    const [tokenOut, setTokenOut] = useState<Token>(PYUSD);
+    const [amountIn, setAmountIn] = useState("");
+    const [amountOut, setAmountOut] = useState("");
+    const [selectingToken, setSelectingToken] = useState<"in" | "out" | null>(null);
+    const [txStatusOpen, setTxStatusOpen] = useState(false);
     const [settings, setSettings] = useState<SwapSettings>({
-        slippageTolerance: 0.5,
-        deadline: 20,
-    })
+        slippageTolerance: 0.5, // %
+        deadline: 20, // minutes
+    });
+
+
+    const router = ADDR.UNIV2_ROUTER;
+    const path = useMemo(
+        () => [tokenIn.address as `0x${string}`, tokenOut.address as `0x${string}`],
+        [tokenIn, tokenOut]
+    );
+
+    const tokenInDecimals = useReadContract({
+        abi: ERC20_ABI,
+        address: tokenIn.address as `0x${string}`,
+        functionName: "decimals",
+    }).data;
+
+    const tokenOutDecimals = useReadContract({
+        abi: ERC20_ABI,
+        address: tokenOut.address as `0x${string}`,
+        functionName: "decimals",
+    }).data;
+
+    const convertUserInputToWei = (amount: string, decimals: number | undefined) => {
+        if (decimals === null || decimals === undefined || !amount) return undefined;
+        try {
+            const amountWei = parseUnits(amount, decimals);
+            return amountWei;
+
+        } catch (error) {
+            console.error('Error converting user input to wei:', error);
+            return undefined;
+        }
+    }
+    const amountInWei = useMemo(() => convertUserInputToWei(amountIn, tokenInDecimals), [amountIn, tokenInDecimals]);
+
+    const allowanceResult = useReadContract({
+        abi: ERC20_ABI,
+        address: tokenIn.address as `0x${string}`,
+        functionName: "allowance",
+        args: address ? [address as `0x${string}`, router] : undefined,
+        query: { enabled: !!address },
+    });
+
+    const allowance = allowanceResult.data;
+    const needsApproval = useMemo(() => {
+        if (allowance === undefined || amountInWei === undefined) {
+            return false;
+        }
+        return allowance < amountInWei;
+    }, [allowance, amountInWei]);
 
     useEffect(() => {
         if (!isConnected) {
             setSwapState(SwapState.DISCONNECTED);
-        }
-        else if (metamaskChainId !== 11155111 || metamaskChainId == null) {
-            setSwapState(SwapState.WRONG_NETWORK);
-        }
-        else {
-            setSwapState(SwapState.NEEDS_APPROVAL);
-        }
-    }, [isConnected, chainId, metamaskChainId]);
+        } else
+            if (chainId !== SEPOLIA_CHAIN_ID) {
+                setSwapState(SwapState.WRONG_NETWORK);
+            } else if (needsApproval) {
+                setSwapState(SwapState.NEEDS_APPROVAL);
+            } else {
+                setSwapState(SwapState.READY_TO_SWAP);
+            }
+    }, [needsApproval, isConnected, chainId]);
 
-    // Wallet connection
-    const handleConnect = async () => {
-        try {
-            await connectWallet();
-            setSwapState(SwapState.NEEDS_APPROVAL)
+    const balanceResult = useReadContract({
+        abi: ERC20_ABI,
+        address: tokenIn.address as `0x${string}`,
+        functionName: "balanceOf",
+        args: address ? [address as `0x${string}`] : undefined,
+    });
 
-        } catch (error) {
-            console.error("Wallet connection failed:", error);
-        } finally {
+    const balanceIn = balanceResult.data;
 
-        }
-    };
-
-    // Wallet disconnection
-    const handleDisconnect = () => {
-        disconnectWallet();
-    }
+    const quoteExactIn = useReadContract({
+        abi: UNIV2_ROUTER_ABI,
+    })
 
     const handlePrimaryAction = () => {
         switch (swapState) {
@@ -79,7 +122,7 @@ export default function SwapPage() {
                 handleConnect()
                 break
             case SwapState.WRONG_NETWORK:
-                switchWrongChain(11155111);
+                switchToSepoliaChain(11155111);
                 break
             case SwapState.NEEDS_APPROVAL:
                 // TODO: Implement token approval with wagmi
@@ -94,22 +137,15 @@ export default function SwapPage() {
                 break
         }
     }
-
     const handleAmountInChange = (value: string) => {
         setAmountIn(value)
         if (swapMode === SwapMode.EXACT_IN && value) {
-            // TODO: Fetch real quote
-            const quote = '1';
-            setAmountOut(quote)
+
         }
     }
-
     const handleAmountOutChange = (value: string) => {
         setAmountOut(value)
         if (swapMode === SwapMode.EXACT_OUT && value) {
-            // TODO: Fetch real quote
-            const mockRequired = (parseFloat(value) / 0.98).toFixed(2)
-            setAmountIn(mockRequired)
         }
     }
 
@@ -120,25 +156,24 @@ export default function SwapPage() {
         setAmountOut(amountIn)
     }
 
+    const handleDisconnect = disconnectWallet;
+
     return (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             <div className="grid lg:grid-cols-3 gap-8">
-                {/* Main Swap Interface */}
                 <div className="lg:col-span-2 space-y-6">
                     <div className="flex items-center justify-between">
                         <h1 className="text-3xl font-bold">Swap Tokens</h1>
                         <div className="flex items-center gap-3">
                             <SettingsDrawer settings={settings} onChange={setSettings} />
-
                             <WalletStatus
                                 isConnected={isConnected}
                                 isLoading={isConnecting}
                                 address={address}
                                 chainId={chainId}
-                                metamaskChainId={metamaskChainId}
+                                metamaskChainId={chainId ?? null}
                                 onConnect={handleConnect}
                                 onDisconnect={handleDisconnect}
-
                             />
                         </div>
                     </div>
@@ -155,9 +190,9 @@ export default function SwapPage() {
                                     amount={amountIn}
                                     onAmountChange={handleAmountInChange}
                                     token={tokenIn}
-                                    onTokenClick={() => setSelectingToken('in')}
+                                    onTokenClick={() => setSelectingToken("in")}
                                     readOnly={swapMode === SwapMode.EXACT_OUT}
-                                    balance="1,234.56"
+                                    balance="-"
                                 />
 
                                 <div className="flex justify-center -my-2 relative z-10">
@@ -181,9 +216,9 @@ export default function SwapPage() {
 
                             {amountIn && amountOut && (
                                 <SwapDetailsPanel
-                                    rate={`1 ${tokenIn.symbol} = ${(parseFloat(amountOut) / parseFloat(amountIn)).toFixed(4)} ${tokenOut.symbol}`}
-                                    priceImpact="0.12"
-                                    minimumReceived={`${(parseFloat(amountOut) * 0.995).toFixed(2)} ${tokenOut.symbol}`}
+                                // rate={rateUi}
+                                // priceImpact={quote.isError ? "—" : "?"}
+                                // minimumReceived={minReceivedUi}
                                 />
                             )}
 
@@ -192,45 +227,68 @@ export default function SwapPage() {
                                 onClick={handlePrimaryAction}
                                 tokenSymbol={tokenIn.symbol}
                             />
+
+                            {/* debug */}
+                            {/* <div className="text-xs text-gray-400 space-y-1">
+                                <div>chainId: {String(chainId)} (need {SEPOLIA_CHAIN_ID})</div>
+                                <div>decimalsIn: {String(tokenInDecimals.data ?? "-")}</div>
+                                <div>decimalsOut: {String(tokenOutDecimals.data ?? "-")}</div>
+                                <div>amountInWei: {String(amountInWei ?? "-")}</div>
+                                <div>allowance: {String(allowance.data ?? "-")}</div>
+                                <div>needsApproval: {String(needsApproval)}</div>
+                                <div>quote error: {String(quote.isError)}</div>
+                                {quote.error && <div>quote error msg: {quote.error.message}</div>}
+                                {approveWrite.error && <div>approve error: {approveWrite.error.message}</div>}
+                                {swapWrite.error && <div>swap error: {swapWrite.error.message}</div>}
+                                <div className="text-xs text-gray-400 space-y-1">
+                                    <div>tokenIn.address: {String(tokenIn.address)}</div>
+                                    <div>tokenOut.address: {String(tokenOut.address)}</div>
+
+                                    <div>tokenInDecimals error: {tokenInDecimals.error?.message ?? "-"}</div>
+                                    <div>tokenOutDecimals error: {tokenOutDecimals.error?.message ?? "-"}</div>
+                                </div>
+
+                            </div> */}
                         </div>
                     </Card>
                 </div>
 
-                {/* Sidebar */}
                 <div className="space-y-6">
                     <Card>
                         <h2 className="text-lg font-bold mb-4">Recent Activity</h2>
-                        <RecentActivity activities={mockActivities} />
+                        {/* <RecentActivity activities={mockActivities} /> */}
                     </Card>
                 </div>
             </div>
 
-            {/* Modals */}
             <TokenSelectorModal
                 isOpen={selectingToken !== null}
                 onClose={() => setSelectingToken(null)}
                 onSelect={(token) => {
-                    if (selectingToken === 'in') setTokenIn(token)
-                    else setTokenOut(token)
+                    if (selectingToken === "in") setTokenIn(token);
+                    else setTokenOut(token);
+                    setSelectingToken(null);
                 }}
-                selectedToken={selectingToken === 'in' ? tokenIn : tokenOut}
+                selectedToken={selectingToken === "in" ? tokenIn : tokenOut}
             />
 
             <TxStatusModal
                 isOpen={txStatusOpen}
                 onClose={() => {
-                    setTxStatusOpen(false)
+                    setTxStatusOpen(false);
+                    setSwapState(SwapState.READY_TO_SWAP);
                     if (swapState === SwapState.TX_SUCCESS) {
-                        setSwapState(SwapState.READY_TO_SWAP)
-                        setAmountIn('')
-                        setAmountOut('')
-                    } else {
-                        setSwapState(SwapState.READY_TO_SWAP)
+                        setAmountIn("");
+                        setAmountOut("");
                     }
                 }}
                 status={swapState as SwapState.TX_SUCCESS | SwapState.TX_ERROR}
-                txHash={swapState === SwapState.TX_SUCCESS ? '0x1234567890abcdef' : undefined}
+            // txHash={swapWrite.data}
             />
         </div>
-    )
+    );
+
+
+
+
 }
