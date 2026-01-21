@@ -24,6 +24,7 @@ import { ADDR, SEPOLIA_CHAIN_ID } from "../config/contracts";
 import { ERC20_ABI, PYUSD, RUMBA } from "../abis/erc20";
 import { UNIV2_ROUTER_ABI } from "../abis/univ2Router";
 import { useWallet } from "../components/swap/WalletContext";
+import { useTokenDecimals } from "../hooks/useTokenDecimals";
 
 export default function SwapPage() {
     // ✅ wagmi wallet state
@@ -49,17 +50,8 @@ export default function SwapPage() {
         [tokenIn, tokenOut]
     );
 
-    const tokenInDecimals = useReadContract({
-        abi: ERC20_ABI,
-        address: tokenIn.address as `0x${string}`,
-        functionName: "decimals",
-    }).data;
-
-    const tokenOutDecimals = useReadContract({
-        abi: ERC20_ABI,
-        address: tokenOut.address as `0x${string}`,
-        functionName: "decimals",
-    }).data;
+    const { decimals: tokenInDecimals } = useTokenDecimals(tokenIn?.address as `0x${string}` | undefined);
+    const { decimals: tokenOutDecimals } = useTokenDecimals(tokenOut?.address as `0x${string}` | undefined);
 
     const convertUserInputToWei = (amount: string, decimals: number | undefined) => {
         if (decimals === null || decimals === undefined || !amount) return undefined;
@@ -93,28 +85,48 @@ export default function SwapPage() {
     useEffect(() => {
         if (!isConnected) {
             setSwapState(SwapState.DISCONNECTED);
-        } else
-            if (chainId !== SEPOLIA_CHAIN_ID) {
-                setSwapState(SwapState.WRONG_NETWORK);
-            } else if (needsApproval) {
-                setSwapState(SwapState.NEEDS_APPROVAL);
-            } else {
-                setSwapState(SwapState.READY_TO_SWAP);
-            }
-    }, [needsApproval, isConnected, chainId]);
+        } else if (chainId !== SEPOLIA_CHAIN_ID) {
+            setSwapState(SwapState.WRONG_NETWORK);
+        } else if (!amountInWei) {
+            setSwapState(SwapState.ENTER_AMOUNT);
+        } else if (needsApproval) {
+            setSwapState(SwapState.NEEDS_APPROVAL);
+        } else {
+            setSwapState(SwapState.READY_TO_SWAP);
+        }
+    }, [needsApproval, isConnected, chainId, amountInWei]);
 
     const balanceResult = useReadContract({
         abi: ERC20_ABI,
         address: tokenIn.address as `0x${string}`,
         functionName: "balanceOf",
         args: address ? [address as `0x${string}`] : undefined,
+        query: { enabled: !!address && chainId === SEPOLIA_CHAIN_ID },
     });
 
     const balanceIn = balanceResult.data;
 
-    const quoteExactIn = useReadContract({
+    const quoteExactInGetter = useReadContract({
         abi: UNIV2_ROUTER_ABI,
-    })
+        address: router as `0x${string}`,
+        functionName: "getAmountsOut",
+        args: amountInWei ? [amountInWei, path] : undefined,
+        query: { enabled: !!amountInWei && tokenIn.address !== tokenOut.address && chainId === SEPOLIA_CHAIN_ID },
+    });
+
+    const quoteAmountOut = useMemo(() => {
+        return quoteExactInGetter.data ? quoteExactInGetter.data[quoteExactInGetter.data.length - 1] : undefined;
+    }, [quoteExactInGetter.data]);
+
+    useEffect(() => {
+        if (!quoteAmountOut || tokenOutDecimals == null) return;
+
+        const amountOutFormatted = formatUnits(quoteAmountOut, tokenOutDecimals);
+        setAmountOut(amountOutFormatted);
+    }, [amountIn, quoteAmountOut, tokenOutDecimals]);
+
+
+
 
     const handlePrimaryAction = () => {
         switch (swapState) {
@@ -216,9 +228,9 @@ export default function SwapPage() {
 
                             {amountIn && amountOut && (
                                 <SwapDetailsPanel
-                                // rate={rateUi}
-                                // priceImpact={quote.isError ? "—" : "?"}
-                                // minimumReceived={minReceivedUi}
+                                    // rate={rateUi}
+                                    // priceImpact={quote.isError ? "—" : "?"}
+                                    minimumReceived={amountOut}
                                 />
                             )}
 
