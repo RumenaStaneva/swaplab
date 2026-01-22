@@ -1,14 +1,7 @@
+/* src/index.css (ADD custom scrollbar styles) */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-/* Tailwind v4: define theme tokens here */
-@theme {
-    --color-gray-100: #f3f4f6;
-    --color-gray-400: #9ca3af;
-    --color-gray-800: #1f2937;
-    --color-gray-950: #030712;
-}
 
 @layer base {
     * {
@@ -17,5 +10,27 @@
 
     body {
         @apply bg-gray-950 text-gray-100;
+    }
+}
+
+@layer utilities {
+
+    /* Custom scrollbar */
+    .custom-scrollbar::-webkit-scrollbar {
+        width: 8px;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar-track {
+        @apply bg-gray-900 rounded-lg;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+        @apply bg-gray-700 rounded-lg hover:bg-gray-600;
+    }
+
+    /* Firefox scrollbar */
+    .custom-scrollbar {
+        scrollbar-width: thin;
+        scrollbar-color: rgb(55 65 81) rgb(17 24 39);
     }
 }

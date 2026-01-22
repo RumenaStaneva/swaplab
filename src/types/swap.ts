@@ -23,14 +23,22 @@ export interface Token {
 }
 
 export interface SwapActivity {
-    id: string
-    timestamp: number
-    tokenIn: Token
-    tokenOut: Token
-    amountIn: string
-    amountOut: string
-    status: 'pending' | 'success' | 'failed'
-    txHash?: string
+    asset: string
+    blockNum: string
+    category: string,
+    from: string
+    hash?: string
+    rawContract: {
+        address: string
+        decimal: string
+        value: string
+    }
+    to: string
+    uniqueId: string
+    value: number
+    metadata: {
+        blockTimestamp: string
+    }
 }
 
 export interface SwapSettings {
