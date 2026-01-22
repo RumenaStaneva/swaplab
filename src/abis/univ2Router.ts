@@ -3,7 +3,20 @@ export const UNIV2_ROUTER_ABI = [
         type: "function",
         name: "getAmountsOut",
         stateMutability: "view",
-        inputs: [{ name: "amountIn", type: "uint256" }, { name: "path", type: "address[]" }],
+        inputs: [
+            { name: "amountIn", type: "uint256" },
+            { name: "path", type: "address[]" },
+        ],
+        outputs: [{ name: "amounts", type: "uint256[]" }],
+    },
+    {
+        type: "function",
+        name: "getAmountsIn",
+        stateMutability: "view",
+        inputs: [
+            { name: "amountOut", type: "uint256" },
+            { name: "path", type: "address[]" },
+        ],
         outputs: [{ name: "amounts", type: "uint256[]" }],
     },
     {
@@ -13,6 +26,19 @@ export const UNIV2_ROUTER_ABI = [
         inputs: [
             { name: "amountIn", type: "uint256" },
             { name: "amountOutMin", type: "uint256" },
+            { name: "path", type: "address[]" },
+            { name: "to", type: "address" },
+            { name: "deadline", type: "uint256" },
+        ],
+        outputs: [{ name: "amounts", type: "uint256[]" }],
+    },
+    {
+        type: "function",
+        name: "swapTokensForExactTokens",
+        stateMutability: "nonpayable",
+        inputs: [
+            { name: "amountOut", type: "uint256" },
+            { name: "amountInMax", type: "uint256" },
             { name: "path", type: "address[]" },
             { name: "to", type: "address" },
             { name: "deadline", type: "uint256" },
