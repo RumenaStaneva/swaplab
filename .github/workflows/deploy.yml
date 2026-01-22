@@ -32,7 +32,12 @@ jobs:
         env:
           VITE_RPC_URL: ${{ secrets.VITE_RPC_URL }}
           VITE_WALLETCONNECT_PROJECT_ID: ${{ secrets.VITE_WALLETCONNECT_PROJECT_ID }}
-
+          VITE_SEPOLIA_RPC_URL: ${{ secrets.VITE_SEPOLIA_RPC_URL }}
+          VITE_RUMBA_TOKEN_ADDRESS: ${{ secrets.VITE_RUMBA_TOKEN_ADDRESS }}
+          VITE_PYUSD_TOKEN_ADDRESS: ${{ secrets.VITE_PYUSD_TOKEN_ADDRESS }}
+          VITE_UNISWAP_V2_ROUTER: ${{ secrets.VITE_UNISWAP_V2_ROUTER }}
+          VITE_ALCHEMY_API_KEY: ${{ secrets.VITE_ALCHEMY_API_KEY }}
+          
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
