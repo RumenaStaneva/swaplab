@@ -36,7 +36,7 @@ export default function HomePage() {
                             </Link>
                             <Button size="lg" variant="secondary" as={Link} to="https://github.com/RumenaStaneva/swaplab" target="_blank" rel="noopener noreferrer">
                                 <Github className="w-5 h-5 mr-2" />
-                                View on GitHub§
+                                View on GitHub
                             </Button>
                         </div>
 
