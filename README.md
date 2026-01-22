@@ -115,7 +115,6 @@ swaplab/
 │   ├── pages/
 │   │   ├── HomePage.tsx
 │   │   ├── SwapPage.tsx
-│   │   └── HistoryPage.tsx
 │   ├── hooks/                # Custom React hooks
 │   │   ├── useSwap.ts        # Swap execution logic
 │   │   ├── useQuote.ts       # Price quote fetching

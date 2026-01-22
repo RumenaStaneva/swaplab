@@ -25,15 +25,6 @@ export default function HeaderNav() {
                         >
                             Swap
                         </Link>
-                        <Link
-                            to="/history"
-                            className={`px-4 py-2 rounded-lg font-medium transition-colors ${isActive('/history')
-                                ? 'bg-gray-800 text-white'
-                                : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800/50'
-                                }`}
-                        >
-                            History
-                        </Link>
                     </nav>
 
                     <Badge variant="warning" className="hidden sm:inline-flex">
